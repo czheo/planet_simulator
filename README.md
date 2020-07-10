@@ -1,5 +1,4 @@
-# planet_simulator
-A planet movement simulator
+# A planet movement simulator
 
 https://czheo.github.io/planet_simulator/
 
