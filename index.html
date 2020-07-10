@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Planet Simulator</title>
+  <style type="text/css">
+  #draw {
+    border: 1px solid black;
+    position: fixed;
+    top: 50px;
+    z-index: 100;
+  }
+  #universe {
+    border:1px solid black;
+    position: fixed;
+    top: 50px;
+    z-index: 0;
+  }
+  </style>
+</head>
+<body>
+  <canvas id='draw' width=1200 height=800></canvas>
+  <canvas id='universe' width=1200 height=800></canvas>
+  A planet movement simulator |
+  planet radius: <input type="range" min="1" max="20" value="2" id="radius"> |
+  show orbit track: <input type="checkbox" id="show_track"> |
+  <button id='reset' onclick='reset()'>reset</button>
+  <script type="text/javascript">
+  var SPEED = 0.008;
+  var G = 0.00002;
+  var planets = [];
+
+  var draw_x = 0;
+  var draw_y = 0;
+  var drawing = false;
+  var canvas = document.getElementById("draw");
+  var draw_ctx = canvas.getContext("2d");
+
+  var universe = document.getElementById("universe");
+  var universe_ctx = universe.getContext("2d");
+
+  function reset() {
+    planets.length = 0;
+  }
+
+  function simulate() {
+    planets.forEach(planet => {
+      if (planet.mass == 0) return;
+      planets.forEach(other => {
+        if (planet == other) return;
+        r = Math.sqrt(Math.pow(planet.x - other.x, 2) + Math.pow(planet.y - other.y, 2))
+        if (r <= planet.get_r() + other.get_r()) {
+          if (planet.mass >= other.mass) {
+            planet.mass += other.mass;
+            other.mass = 0;
+          } else {
+            other.mass += planet.mass;
+            planet.mass = 0;
+          }
+          return;
+        }
+        var ax = other.mass * (other.x - planet.x) / Math.pow(r, 3);
+        var ay = other.mass * (other.y - planet.y) / Math.pow(r, 3);
+        planet.vx += ax * G;
+        planet.vy += ay * G;
+      })
+      planet.x += planet.vx * SPEED;
+      planet.y += planet.vy * SPEED;
+    });
+
+    draw_planets();
+    setTimeout(simulate, 2);
+  }
+
+  function draw_planets() {
+    var show_track = document.getElementById("show_track")
+    if (!show_track.checked) clear(universe_ctx);
+    planets.forEach(planet => {
+      draw_circle(universe_ctx, planet.x, planet.y, planet.get_r());
+    });
+  }
+
+  function create_planet(r, x, y, velocity_x, velocity_y) {
+    var P = 7;
+    planets.push({
+      'mass': Math.pow(r, P),
+      'x': x,
+      'y': y,
+      'vx': velocity_x,
+      'vy': velocity_y,
+      'get_r': function() {
+        return Math.pow(this.mass, 1/P);
+      }
+    });
+  }
+
+  function get_r() {
+    return parseInt(document.getElementById("radius").value);
+  }
+
+  function draw_circle(ctx, x, y, r) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+
+  function draw_line(ctx, x1, y1, x2, y2) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  function clear(ctx) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  }
+
+  function main() {
+    canvas.addEventListener('mousedown', function(e) {
+      drawing = true;
+      draw_x = e.offsetX;
+      draw_y = e.offsetY;
+    });
+
+    canvas.addEventListener('mousemove', function(e) {
+      if (!drawing) return;
+      clear(draw_ctx);
+      draw_line(draw_ctx, draw_x, draw_y, e.offsetX, e.offsetY);
+    });
+
+    canvas.addEventListener('mouseup', function(e) {
+      if (!drawing) return;
+      clear(draw_ctx);
+      var vx = e.offsetX - draw_x;
+      var vy = e.offsetY - draw_y;
+      create_planet(get_r(), draw_x, draw_y, vx, vy);
+      drawing = false;
+    });
+
+    simulate();
+  }
+
+  main();
+  </script>
+</body>
+</html>
